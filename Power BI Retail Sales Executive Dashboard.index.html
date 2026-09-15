@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retail Sales Executive BI Dashboard | Sayed Inamulhasan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        pbi: {
+                            yellow: '#f2c811',
+                            dark: '#1e2124',
+                            surface: '#292d32',
+                            card: '#1f2429',
+                            border: '#374151',
+                            accent: '#2563eb',
+                            teal: '#14b8a6',
+                            rose: '#f43f5e'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+        }
+        /* Custom scrollbars matching Power BI desktop canvas */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e2124;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4b5563;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+        }
+        .pbi-card {
+            background: #1f2429;
+            border: 1px solid #323842;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+        }
+        .pbi-card:hover {
+            border-color: #4b5563;
+        }
+    </style>
+</head>
+<body class="bg-[#121417] text-slate-200 min-h-screen flex flex-col antialiased selection:bg-amber-400 selection:text-black">
+
+    <header class="bg-[#181b1f] border-b border-gray-800 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 sticky top-0 z-50">
+        <div class="flex items-center space-x-3">
+            <div class="w-8 h-8 rounded bg-gradient-to-tr from-amber-500 to-yellow-300 flex items-center justify-center font-black text-black text-sm shadow-md">
+                <i class="fa-solid fa-chart-column"></i>
+            </div>
+            <div>
+                <div class="flex items-center gap-2">
+                    <h1 class="text-sm md:text-base font-bold text-white tracking-wide">
+                        Retail Sales &amp; Customer Performance Dashboard
+                    </h1>
+                    <span class="text-[11px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold">Executive BI</span>
+                </div>
+                <p class="text-[11px] text-gray-400">Model: Star Schema (Fact_Sales, Dim_Customer, Dim_Product) • Portfolio: <span class="text-blue-400">Sayed Inamulhasan</span></p>
+            </div>
+        </div>
+
+        <div class="flex items-center flex-wrap gap-2 text-xs">
+            <a href="https://github.com/sayedinam/retail-sales-powerbi-dashboard" target="_blank" rel="noreferrer" class="flex items-center gap-1.5 px-3 py-1.5 rounded bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 transition">
+                <i class="fa-brands fa-github text-sm"></i>
+                <span class="hidden sm:inline font-medium">GitHub Repository</span>
+            </a>
+            <button onclick="resetFilters()" class="flex items-center gap-1.5 px-3 py-1.5 rounded bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 font-medium transition">
+                <i class="fa-solid fa-rotate-left"></i>
+                <span>Reset Slicers</span>
+            </button>
+            <div class="px-2.5 py-1 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-semibold flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>Live DAX Engine</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="bg-[#1a1d22] border-b border-gray-800 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 text-xs">
+            <div class="flex items-center gap-2 text-gray-400 font-semibold">
+                <i class="fa-solid fa-filter text-amber-400"></i>
+                <span>FILTERS &amp; SLICERS:</span>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 flex-1 md:max-w-3xl">
+                <!-- Year Slicer -->
+                <div class="flex flex-col">
+                    <label class="text-[10px] uppercase tracking-wider text-gray-400 font-bold mb-1">Fiscal Year</label>
+                    <select id="filter-year" onchange="applyFilters()" class="bg-[#242830] border border-gray-700 rounded px-2 py-1.5 text-gray-200 focus:outline-none focus:border-amber-400 transition cursor-pointer">
+                        <option value="All">All Years (2024–2026)</option>
+                        <option value="2026">FY 2026</option>
+                        <option value="2025">FY 2025</option>
+                        <option value="2024">FY 2024</option>
+                    </select>
+                </div>
+
+                <!-- Region Slicer -->
+                <div class="flex flex-col">
+                    <label class="text-[10px] uppercase tracking-wider text-gray-400 font-bold mb-1">Sales Region</label>
+                    <select id="filter-region" onchange="applyFilters()" class="bg-[#242830] border border-gray-700 rounded px-2 py-1.5 text-gray-200 focus:outline-none focus:border-amber-400 transition cursor-pointer">
+                        <option value="All">All Regions</option>
+                        <option value="North">North Region</option>
+                        <option value="South">South Region</option>
+                        <option value="East">East Region</option>
+                        <option value="West">West Region</option>
+                    </select>
+                </div>
+
+                <!-- Category Slicer -->
+                <div class="flex flex-col">
+                    <label class="text-[10px] uppercase tracking-wider text-gray-400 font-bold mb-1">Product Category</label>
+                    <select id="filter-category" onchange="applyFilters()" class="bg-[#242830] border border-gray-700 rounded px-2 py-1.5 text-gray-200 focus:outline-none focus:border-amber-400 transition cursor-pointer">
+                        <option value="All">All Categories</option>
+                        <option value="Electronics">Electronics</option>
+                        <option value="Furniture">Furniture</option>
+                        <option value="Apparel">Apparel</option>
+                        <option value="Home & Kitchen">Home &amp; Kitchen</option>
+                    </select>
+                </div>
+
+                <!-- Customer Segment Slicer -->
+                <div class="flex flex-col">
+                    <label class="text-[10px] uppercase tracking-wider text-gray-400 font-bold mb-1">Customer Tier</label>
+                    <select id="filter-segment" onchange="applyFilters()" class="bg-[#242830] border border-gray-700 rounded px-2 py-1.5 text-gray-200 focus:outline-none focus:border-amber-400 transition cursor-pointer">
+                        <option value="All">All Segments</option>
+                        <option value="Enterprise">Enterprise B2B</option>
+                        <option value="Mid-Market">Mid-Market</option>
+                        <option value="Direct Consumer">Direct Consumer</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="hidden lg:flex flex-col items-end text-right">
+                <span class="text-[10px] text-gray-400">Total Filtered Transactions</span>
+                <span id="stat-record-count" class="font-bold text-sm text-amber-400 font-mono">1,240 / 1,240</span>
+            </div>
+        </div>
+    </div>
+
+    <main class="flex-1 p-4 md:p-6 max-w-7xl mx-auto w-full space-y-5">
+        
+        <!-- KPI Row -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            
+            <!-- KPI 1: Gross Revenue -->
+            <div class="pbi-card rounded-lg p-4 relative overflow-hidden">
+                <div class="flex items-center justify-between text-gray-400 mb-1">
+                    <span class="text-xs font-bold uppercase tracking-wider">Total Gross Revenue</span>
+                    <span class="p-1.5 rounded bg-blue-500/10 text-blue-400"><i class="fa-solid fa-indian-rupee-sign"></i></span>
+                </div>
+                <div class="flex items-baseline gap-2">
+                    <span id="kpi-revenue" class="text-2xl lg:text-3xl font-extrabold text-white font-mono">₹4.82 Cr</span>
+                    <span id="kpi-revenue-trend" class="text-xs font-semibold text-emerald-400 flex items-center">
+                        <i class="fa-solid fa-arrow-trend-up mr-1"></i> +14.8% YoY
+                    </span>
+                </div>
+                <div class="mt-3 flex items-center justify-between text-[11px] text-gray-400 border-t border-gray-800 pt-2">
+                    <span>Target: ₹4.50 Cr</span>
+                    <span class="text-emerald-400 font-medium">107.1% Attainment</span>
+                </div>
+            </div>
+
+            <!-- KPI 2: Total Net Margin -->
+            <div class="pbi-card rounded-lg p-4 relative overflow-hidden">
+                <div class="flex items-center justify-between text-gray-400 mb-1">
+                    <span class="text-xs font-bold uppercase tracking-wider">Operating Profit</span>
+                    <span class="p-1.5 rounded bg-emerald-500/10 text-emerald-400"><i class="fa-solid fa-sack-dollar"></i></span>
+                </div>
+                <div class="flex items-baseline gap-2">
+                    <span id="kpi-profit" class="text-2xl lg:text-3xl font-extrabold text-white font-mono">₹1.28 Cr</span>
+                    <span id="kpi-margin-pct" class="text-xs font-semibold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300">
+                        26.5% Margin
+                    </span>
+                </div>
+                <div class="mt-3 flex items-center justify-between text-[11px] text-gray-400 border-t border-gray-800 pt-2">
+                    <span>Benchmark: 22.0%</span>
+                    <span class="text-emerald-400 font-medium">+450 bps</span>
+                </div>
+            </div>
+
+            <!-- KPI 3: Total Orders -->
+            <div class="pbi-card rounded-lg p-4 relative overflow-hidden">
+                <div class="flex items-center justify-between text-gray-400 mb-1">
+                    <span class="text-xs font-bold uppercase tracking-wider">Total Orders</span>
+                    <span class="p-1.5 rounded bg-amber-500/10 text-amber-400"><i class="fa-solid fa-cart-shopping"></i></span>
+                </div>
+                <div class="flex items-baseline gap-2">
+                    <span id="kpi-orders" class="text-2xl lg:text-3xl font-extrabold text-white font-mono">18,420</span>
+                    <span class="text-xs font-semibold text-emerald-400 flex items-center">
+                        <i class="fa-solid fa-arrow-trend-up mr-1"></i> +8.2%
+                    </span>
+                </div>
+                <div class="mt-3 flex items-center justify-between text-[11px] text-gray-400 border-t border-gray-800 pt-2">
+                    <span>Return Rate: 2.3%</span>
+                    <span class="text-gray-300">Fulfillment: 98.4%</span>
+                </div>
+            </div>
+
+            <!-- KPI 4: AOV (Average Order Value) -->
+            <div class="pbi-card rounded-lg p-4 relative overflow-hidden">
+                <div class="flex items-center justify-between text-gray-400 mb-1">
+                    <span class="text-xs font-bold uppercase tracking-wider">Avg Order Value (AOV)</span>
+                    <span class="p-1.5 rounded bg-purple-500/10 text-purple-400"><i class="fa-solid fa-receipt"></i></span>
+                </div>
+                <div class="flex items-baseline gap-2">
+                    <span id="kpi-aov" class="text-2xl lg:text-3xl font-extrabold text-white font-mono">₹2,616</span>
+                    <span class="text-xs font-semibold text-emerald-400 flex items-center">
+                        <i class="fa-solid fa-arrow-trend-up mr-1"></i> +6.1%
+                    </span>
+                </div>
+                <div class="mt-3 flex items-center justify-between text-[11px] text-gray-400 border-t border-gray-800 pt-2">
+                    <span>Active Customers: 4,890</span>
+                    <span class="text-purple-300 font-medium">CLV: ₹9,850</span>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            
+            <!-- Monthly Revenue & Profit Combo Chart -->
+            <div class="pbi-card rounded-lg p-4 lg:col-span-2 flex flex-col">
+                <div class="flex flex-wrap items-center justify-between mb-3">
+                    <div>
+                        <h2 class="text-sm font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-chart-line text-amber-400"></i> Monthly Revenue vs. Profit Trajectory
+                        </h2>
+                        <p class="text-[11px] text-gray-400">Dual-axis time intelligence tracking volume against operating returns</p>
+                    </div>
+                    <div class="flex items-center gap-3 text-xs">
+                        <span class="flex items-center gap-1.5 text-gray-300">
+                            <span class="w-3 h-3 rounded-sm bg-blue-500"></span> Revenue (Lakhs)
+                        </span>
+                        <span class="flex items-center gap-1.5 text-gray-300">
+                            <span class="w-3 h-3 rounded-sm bg-emerald-400"></span> Profit (Lakhs)
+                        </span>
+                    </div>
+                </div>
+                <div class="relative flex-1 min-h-[260px] w-full">
+                    <canvas id="monthlyTrendChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Regional Share Donut -->
+            <div class="pbi-card rounded-lg p-4 flex flex-col">
+                <div class="mb-3">
+                    <h2 class="text-sm font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-map-location-dot text-emerald-400"></i> Regional Revenue Distribution
+                    </h2>
+                    <p class="text-[11px] text-gray-400">Geographical contribution across 4 operational zones</p>
+                </div>
+                <div class="relative flex-1 min-h-[220px] flex items-center justify-center">
+                    <canvas id="regionDonutChart"></canvas>
+                </div>
+                <div id="region-legend-custom" class="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-gray-800 text-[11px]">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            
+            <!-- Category Margin Analysis Bar Chart -->
+            <div class="pbi-card rounded-lg p-4 lg:col-span-2 flex flex-col">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <h2 class="text-sm font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-chart-simple text-purple-400"></i> Category Profitability &amp; Margin Breakdown
+                        </h2>
+                        <p class="text-[11px] text-gray-400">Sales volume compared against net profit margin % per product line</p>
+                    </div>
+                </div>
+                <div class="relative flex-1 min-h-[240px] w-full">
+                    <canvas id="categoryBarChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Customer Segment Contribution -->
+            <div class="pbi-card rounded-lg p-4 flex flex-col">
+                <div class="mb-3">
+                    <h2 class="text-sm font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-users text-amber-400"></i> Customer Tier Performance
+                    </h2>
+                    <p class="text-[11px] text-gray-400">Revenue attribution by customer engagement model</p>
+                </div>
+                <div class="relative flex-1 min-h-[200px] flex items-center justify-center">
+                    <canvas id="segmentPieChart"></canvas>
+                </div>
+                <div class="mt-2 text-xs text-gray-400 space-y-1.5 pt-2 border-t border-gray-800">
+                    <div class="flex justify-between">
+                        <span>Top 20% Accounts Revenue:</span>
+                        <span class="text-white font-semibold">58.4%</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Repeat Purchase Rate:</span>
+                        <span class="text-emerald-400 font-semibold">41.2%</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="pbi-card rounded-lg overflow-hidden">
+            <div class="p-4 border-b border-gray-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+                <div>
+                    <h2 class="text-sm font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-table-list text-blue-400"></i> Transactional Sales Records (Fact_Sales)
+                    </h2>
+                    <p class="text-[11px] text-gray-400">Live query records matching applied filter dimensions</p>
+                </div>
+                <div class="flex items-center gap-2 w-full md:w-auto">
+                    <div class="relative flex-1 md:w-64">
+                        <input type="text" id="table-search" placeholder="Search order, customer, SKU..." oninput="handleSearch()" class="w-full bg-[#15171a] border border-gray-700 rounded px-3 py-1.5 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-amber-400 transition pl-8">
+                        <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-gray-500 text-xs"></i>
+                    </div>
+                    <button onclick="exportCSV()" class="px-2.5 py-1.5 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap">
+                        <i class="fa-solid fa-file-arrow-down text-emerald-400"></i>
+                        <span>Export CSV</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs text-gray-300">
+                    <thead class="bg-[#181b20] text-gray-400 text-[11px] uppercase tracking-wider font-bold border-b border-gray-800">
+                        <tr>
+                            <th class="py-2.5 px-3">Order ID</th>
+                            <th class="py-2.5 px-3">Date</th>
+                            <th class="py-2.5 px-3">Customer</th>
+                            <th class="py-2.5 px-3">Tier</th>
+                            <th class="py-2.5 px-3">Region</th>
+                            <th class="py-2.5 px-3">Category</th>
+                            <th class="py-2.5 px-3 text-right">Revenue (₹)</th>
+                            <th class="py-2.5 px-3 text-right">Margin %</th>
+                            <th class="py-2.5 px-3 text-center">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body" class="divide-y divide-gray-800/60 font-mono">
+                        <!-- Populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Table Pagination & Counter -->
+            <div class="p-3 border-t border-gray-800 flex flex-col sm:flex-row items-center justify-between text-xs text-gray-400 gap-2">
+                <span id="pagination-info">Showing 1 to 10 of 25 records</span>
+                <div class="flex items-center gap-1.5">
+                    <button id="btn-prev" onclick="prevPage()" class="px-2.5 py-1 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed">
+                        <i class="fa-solid fa-angle-left"></i> Prev
+                    </button>
+                    <span id="page-indicator" class="px-3 py-1 rounded bg-[#15171a] font-mono text-gray-200">1 / 3</span>
+                    <button id="btn-next" onclick="nextPage()" class="px-2.5 py-1 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed">
+                        Next <i class="fa-solid fa-angle-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="bg-[#15171b] border-t border-gray-800/80 px-4 py-3 mt-6 text-xs text-gray-400 text-center flex flex-col sm:flex-row items-center justify-between max-w-7xl mx-auto w-full gap-2">
+        <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+            <span>Developed by <strong>Sayed Inamulhasan Mujahid Hussain</strong> | Data Analyst</span>
+        </div>
+        <div class="flex items-center gap-4">
+            <a href="https://linkedin.com/in/sayed-inamulhasan-mujahid-hussain-094219432" target="_blank" class="hover:text-blue-400 transition flex items-center gap-1">
+                <i class="fa-brands fa-linkedin"></i> LinkedIn
+            </a>
+            <a href="https://github.com/sayedinam" target="_blank" class="hover:text-white transition flex items-center gap-1">
+                <i class="fa-brands fa-github"></i> GitHub
+            </a>
+            <span>Tech: SQL • Power BI (DAX) • Python • Advanced Excel</span>
+        </div>
+    </footer>
+
+    <script>
+        /* Comprehensive Mock Dataset for Retail Enterprise Operations */
+        const RAW_DATA = [
+            { id: "ORD-94821", date: "2026-08-14", year: "2026", month: "Aug", customer: "Apex Logix Ltd", segment: "Enterprise", region: "North", category: "Electronics", amount: 145000, profit: 42050, status: "Delivered" },
+            { id: "ORD-94822", date: "2026-08-12", year: "2026", month: "Aug", customer: "Priya Sharma", segment: "Direct Consumer", region: "West", category: "Home & Kitchen", amount: 12400, profit: 3400, status: "Delivered" },
+            { id: "ORD-94823", date: "2026-07-28", year: "2026", month: "Jul", customer: "Trident Tech Hub", segment: "Mid-Market", region: "South", category: "Furniture", amount: 68900, profit: 15400, status: "Delivered" },
+            { id: "ORD-94824", date: "2026-07-15", year: "2026", month: "Jul", customer: "Urban Retailers", segment: "Enterprise", region: "East", category: "Apparel", amount: 89000, profit: 24200, status: "Delivered" },
+            { id: "ORD-94825", date: "2026-06-20", year: "2026", month: "Jun", customer: "Rahul Verma", segment: "Direct Consumer", region: "North", category: "Electronics", amount: 34000, profit: 8900, status: "Delivered" },
+            { id: "ORD-94826", date: "2026-06-11", year: "2026", month: "Jun", customer: "Nexus Sol.", segment: "Mid-Market", region: "West", category: "Electronics", amount: 92000, profit: 27600, status: "Delivered" },
+            { id: "ORD-94827", date: "2026-05-19", year: "2026", month: "May", customer: "Aarav Gupta", segment: "Direct Consumer", region: "South", category: "Furniture", amount: 24500, profit: 5800, status: "Delivered" },
+            { id: "ORD-94828", date: "2026-05-04", year: "2026", month: "May", customer: "Zenith Corp", segment: "Enterprise", region: "North", category: "Electronics", amount: 180000, profit: 54000, status: "Delivered" },
+            { id: "ORD-94829", date: "2026-04-18", year: "2026", month: "Apr", customer: "Sunil Mehta", segment: "Direct Consumer", region: "East", category: "Apparel", amount: 8900, profit: 2800, status: "Delivered" },
+            { id: "ORD-94830", date: "2026-04-02", year: "2026", month: "Apr", customer: "CloudMatrix", segment: "Mid-Market", region: "West", category: "Electronics", amount: 76000, profit: 19800, status: "Delivered" },
+            { id: "ORD-94831", date: "2026-03-22", year: "2026", month: "Mar", customer: "Global Spaces", segment: "Enterprise", region: "South", category: "Furniture", amount: 135000, profit: 32400, status: "Delivered" },
+            { id: "ORD-94832", date: "2026-03-10", year: "2026", month: "Mar", customer: "Ananya Roy", segment: "Direct Consumer", region: "East", category: "Home & Kitchen", amount: 14200, profit: 3900, status: "Delivered" },
+            { id: "ORD-94833", date: "2026-02-14", year: "2026", month: "Feb", customer: "Omni Logistics", segment: "Enterprise", region: "North", category: "Apparel", amount: 56000, profit: 14000, status: "Delivered" },
+            { id: "ORD-94834", date: "2026-01-29", year: "2026", month: "Jan", customer: "Karan Patel", segment: "Direct Consumer", region: "West", category: "Electronics", amount: 48000, profit: 12500, status: "Delivered" },
+            { id: "ORD-94835", date: "2025-11-20", year: "2025", month: "Nov", customer: "BluePeak Media", segment: "Mid-Market", region: "South", category: "Electronics", amount: 110000, profit: 31000, status: "Delivered" },
+            { id: "ORD-94836", date: "2025-10-15", year: "2025", month: "Oct", customer: "Diwali Bazaar Ltd", segment: "Enterprise", region: "North", category: "Home & Kitchen", amount: 210000, profit: 58800, status: "Delivered" },
+            { id: "ORD-94837", date: "2025-09-08", year: "2025", month: "Sep", customer: "Vikas Deshmukh", segment: "Direct Consumer", region: "West", category: "Furniture", amount: 31000, profit: 7100, status: "Delivered" },
+            { id: "ORD-94838", date: "2025-06-14", year: "2025", month: "Jun", customer: "Horizon Retail", segment: "Enterprise", region: "East", category: "Apparel", amount: 95000, profit: 26600, status: "Delivered" },
+            { id: "ORD-94839", date: "2024-12-05", year: "2024", month: "Dec", customer: "Prime Network", segment: "Mid-Market", region: "South", category: "Electronics", amount: 84000, profit: 21800, status: "Delivered" },
+            { id: "ORD-94840", date: "2024-08-22", year: "2024", month: "Aug", customer: "Heritage Furnishings", segment: "Enterprise", region: "North", category: "Furniture", amount: 160000, profit: 38400, status: "Delivered" }
+        ];
+
+        let filteredData = [...RAW_DATA];
+        let currentPage = 1;
+        const recordsPerPage = 6;
+        let searchQuery = "";
+
+        // Chart references
+        let monthlyTrendChartInstance = null;
+        let regionDonutChartInstance = null;
+        let categoryBarChartInstance = null;
+        let segmentPieChartInstance = null;
+
+        // Colors palette (Power BI Modern Executive Dark)
+        const PALETTE = {
+            blue: "#3b82f6",
+            teal: "#14b8a6",
+            amber: "#f59e0b",
+            purple: "#a855f7",
+            rose: "#f43f5e",
+            cyan: "#06b6d4",
+            slate: "#475569"
+        };
+
+        function applyFilters() {
+            const yearVal = document.getElementById("filter-year").value;
+            const regionVal = document.getElementById("filter-region").value;
+            const catVal = document.getElementById("filter-category").value;
+            const segVal = document.getElementById("filter-segment").value;
+
+            filteredData = RAW_DATA.filter(item => {
+                const matchYear = (yearVal === "All" || item.year === yearVal);
+                const matchRegion = (regionVal === "All" || item.region === regionVal);
+                const matchCat = (catVal === "All" || item.category === catVal);
+                const matchSeg = (segVal === "All" || item.segment === segVal);
+                return matchYear && matchRegion && matchCat && matchSeg;
+            });
+
+            currentPage = 1;
+            updateDashboard();
+        }
+
+        function resetFilters() {
+            document.getElementById("filter-year").value = "All";
+            document.getElementById("filter-region").value = "All";
+            document.getElementById("filter-category").value = "All";
+            document.getElementById("filter-segment").value = "All";
+            document.getElementById("table-search").value = "";
+            searchQuery = "";
+            applyFilters();
+        }
+
+        function updateKPIs() {
+            const totalRev = filteredData.reduce((acc, cur) => acc + cur.amount, 0);
+            const totalProfit = filteredData.reduce((acc, cur) => acc + cur.profit, 0);
+            const orderCount = filteredData.length;
+            const aov = orderCount > 0 ? Math.round(totalRev / orderCount) : 0;
+            const marginPct = totalRev > 0 ? ((totalProfit / totalRev) * 100).toFixed(1) : 0;
+
+            // Formatter for Lakhs / Crores
+            const formatCurrency = (val) => {
+                if (val >= 10000000) return `₹${(val / 10000000).toFixed(2)} Cr`;
+                if (val >= 100000) return `₹${(val / 100000).toFixed(2)} Lakh`;
+                return `₹${val.toLocaleString('en-IN')}`;
+            };
+
+            document.getElementById("kpi-revenue").innerText = formatCurrency(totalRev);
+            document.getElementById("kpi-profit").innerText = formatCurrency(totalProfit);
+            document.getElementById("kpi-orders").innerText = (orderCount * 12).toLocaleString();
+            document.getElementById("kpi-aov").innerText = `₹${aov.toLocaleString('en-IN')}`;
+            document.getElementById("kpi-margin-pct").innerText = `${marginPct}% Margin`;
+            document.getElementById("stat-record-count").innerText = `${filteredData.length} / ${RAW_DATA.length}`;
+        }
+
+        function renderMonthlyTrendChart() {
+            const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            const revByMonth = {};
+            const profitByMonth = {};
+            months.forEach(m => { revByMonth[m] = 0; profitByMonth[m] = 0; });
+
+            filteredData.forEach(item => {
+                if (revByMonth[item.month] !== undefined) {
+                    revByMonth[item.month] += (item.amount / 100000);
+                    profitByMonth[item.month] += (item.profit / 100000);
+                }
+            });
+
+            const ctx = document.getElementById("monthlyTrendChart").getContext("2d");
+            if (monthlyTrendChartInstance) monthlyTrendChartInstance.destroy();
+
+            monthlyTrendChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: months,
+                    datasets: [
+                        {
+                            type: 'line',
+                            label: 'Net Margin (₹ Lakhs)',
+                            data: months.map(m => profitByMonth[m].toFixed(2)),
+                            borderColor: PALETTE.teal,
+                            backgroundColor: PALETTE.teal,
+                            borderWidth: 2.5,
+                            tension: 0.3,
+                            yAxisID: 'y1',
+                            pointRadius: 3,
+                            pointHoverRadius: 5
+                        },
+                        {
+                            type: 'bar',
+                            label: 'Revenue (₹ Lakhs)',
+                            data: months.map(m => revByMonth[m].toFixed(2)),
+                            backgroundColor: 'rgba(59, 130, 246, 0.75)',
+                            borderRadius: 4,
+                            yAxisID: 'y'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1f2429',
+                            titleColor: '#fff',
+                            bodyColor: '#e5e7eb',
+                            borderColor: '#374151',
+                            borderWidth: 1
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255,255,255,0.04)' },
+                            ticks: { color: '#9ca3af', font: { size: 10 } }
+                        },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            grid: { color: 'rgba(255,255,255,0.06)' },
+                            ticks: { color: '#9ca3af', font: { size: 10 } }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            grid: { drawOnChartArea: false },
+                            ticks: { color: PALETTE.teal, font: { size: 10 } }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderRegionDonutChart() {
+            const regions = ["North", "South", "East", "West"];
+            const colors = [PALETTE.blue, PALETTE.teal, PALETTE.amber, PALETTE.purple];
+            const revMap = { "North": 0, "South": 0, "East": 0, "West": 0 };
+
+            filteredData.forEach(item => {
+                if (revMap[item.region] !== undefined) revMap[item.region] += item.amount;
+            });
+
+            const dataValues = regions.map(r => revMap[r]);
+            const totalSum = dataValues.reduce((a, b) => a + b, 0);
+
+            // Custom Legend Populator
+            const legendContainer = document.getElementById("region-legend-custom");
+            legendContainer.innerHTML = regions.map((r, i) => {
+                const pct = totalSum > 0 ? ((revMap[r] / totalSum) * 100).toFixed(1) : 0;
+                return `
+                    <div class="flex items-center justify-between p-1 rounded bg-[#16191d]">
+                        <span class="flex items-center gap-1.5 text-gray-300">
+                            <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${colors[i]}"></span>
+                            <span>${r}</span>
+                        </span>
+                        <span class="font-mono text-white font-bold">${pct}%</span>
+                    </div>
+                `;
+            }).join('');
+
+            const ctx = document.getElementById("regionDonutChart").getContext("2d");
+            if (regionDonutChartInstance) regionDonutChartInstance.destroy();
+
+            regionDonutChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: regions,
+                    datasets: [{
+                        data: dataValues,
+                        backgroundColor: colors,
+                        borderWidth: 2,
+                        borderColor: '#1f2429'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const val = context.raw || 0;
+                                    return ` ₹${(val / 100000).toFixed(2)} Lakhs`;
+                                }
+                            }
+                        }
+                    },
+                    cutout: '72%'
+                }
+            });
+        }
+
+        function renderCategoryBarChart() {
+            const categories = ["Electronics", "Furniture", "Apparel", "Home & Kitchen"];
+            const catSales = {};
+            const catProfit = {};
+            categories.forEach(c => { catSales[c] = 0; catProfit[c] = 0; });
+
+            filteredData.forEach(item => {
+                if (catSales[item.category] !== undefined) {
+                    catSales[item.category] += (item.amount / 100000);
+                    catProfit[item.category] += (item.profit / 100000);
+                }
+            });
+
+            const ctx = document.getElementById("categoryBarChart").getContext("2d");
+            if (categoryBarChartInstance) categoryBarChartInstance.destroy();
+
+            categoryBarChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: categories,
+                    datasets: [
+                        {
+                            label: 'Revenue (₹ Lakhs)',
+                            data: categories.map(c => catSales[c].toFixed(2)),
+                            backgroundColor: 'rgba(59, 130, 246, 0.85)',
+                            borderRadius: 4
+                        },
+                        {
+                            label: 'Profit (₹ Lakhs)',
+                            data: categories.map(c => catProfit[c].toFixed(2)),
+                            backgroundColor: 'rgba(245, 158, 11, 0.85)',
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#cbd5e1', font: { size: 11 } }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { color: '#9ca3af' }
+                        },
+                        y: {
+                            grid: { display: false },
+                            ticks: { color: '#e2e8f0', font: { weight: '600' } }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderSegmentPieChart() {
+            const segments = ["Enterprise", "Mid-Market", "Direct Consumer"];
+            const colors = [PALETTE.purple, PALETTE.cyan, PALETTE.rose];
+            const segMap = { "Enterprise": 0, "Mid-Market": 0, "Direct Consumer": 0 };
+
+            filteredData.forEach(item => {
+                if (segMap[item.segment] !== undefined) segMap[item.segment] += item.amount;
+            });
+
+            const ctx = document.getElementById("segmentPieChart").getContext("2d");
+            if (segmentPieChartInstance) segmentPieChartInstance.destroy();
+
+            segmentPieChartInstance = new Chart(ctx, {
+                type: 'polarArea',
+                data: {
+                    labels: segments,
+                    datasets: [{
+                        data: segments.map(s => segMap[s]),
+                        backgroundColor: colors.map(c => c + 'aa'),
+                        borderColor: '#1f2429'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#cbd5e1', font: { size: 10 }, boxWidth: 10 }
+                        }
+                    },
+                    scales: {
+                        r: {
+                            ticks: { display: false },
+                            grid: { color: 'rgba(255,255,255,0.06)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function handleSearch() {
+            searchQuery = document.getElementById("table-search").value.toLowerCase();
+            currentPage = 1;
+            renderTable();
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById("table-body");
+            
+            const searchFiltered = filteredData.filter(item => {
+                return item.id.toLowerCase().includes(searchQuery) ||
+                       item.customer.toLowerCase().includes(searchQuery) ||
+                       item.category.toLowerCase().includes(searchQuery) ||
+                       item.region.toLowerCase().includes(searchQuery);
+            });
+
+            const totalRows = searchFiltered.length;
+            const totalPages = Math.ceil(totalRows / recordsPerPage) || 1;
+            if (currentPage > totalPages) currentPage = totalPages;
+
+            const startIndex = (currentPage - 1) * recordsPerPage;
+            const pageRecords = searchFiltered.slice(startIndex, startIndex + recordsPerPage);
+
+            if (pageRecords.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center py-6 text-gray-500 font-sans">No matching records found.</td></tr>`;
+            } else {
+                tbody.innerHTML = pageRecords.map(item => {
+                    const margin = ((item.profit / item.amount) * 100).toFixed(1);
+                    return `
+                        <tr class="hover:bg-gray-800/40 transition">
+                            <td class="py-2.5 px-3 font-bold text-amber-400">${item.id}</td>
+                            <td class="py-2.5 px-3 text-gray-400">${item.date}</td>
+                            <td class="py-2.5 px-3 text-white font-sans font-medium">${item.customer}</td>
+                            <td class="py-2.5 px-3"><span class="px-1.5 py-0.5 rounded text-[10px] bg-gray-800 text-gray-300">${item.segment}</span></td>
+                            <td class="py-2.5 px-3">${item.region}</td>
+                            <td class="py-2.5 px-3">${item.category}</td>
+                            <td class="py-2.5 px-3 text-right text-emerald-400 font-bold">₹${item.amount.toLocaleString('en-IN')}</td>
+                            <td class="py-2.5 px-3 text-right font-medium text-blue-300">${margin}%</td>
+                            <td class="py-2.5 px-3 text-center">
+                                <span class="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-sans font-semibold">
+                                    ${item.status}
+                                </span>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            // Pagination Controls Text
+            const endCount = Math.min(startIndex + recordsPerPage, totalRows);
+            document.getElementById("pagination-info").innerText = totalRows > 0
+                ? `Showing ${startIndex + 1} to ${endCount} of ${totalRows} records`
+                : `Showing 0 records`;
+
+            document.getElementById("page-indicator").innerText = `${currentPage} / ${totalPages}`;
+            document.getElementById("btn-prev").disabled = (currentPage === 1);
+            document.getElementById("btn-next").disabled = (currentPage >= totalPages);
+        }
+
+        function prevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                renderTable();
+            }
+        }
+
+        function nextPage() {
+            const totalPages = Math.ceil(filteredData.length / recordsPerPage);
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderTable();
+            }
+        }
+
+        function exportCSV() {
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Order ID,Date,Customer,Tier,Region,Category,Revenue,Profit,Status\n";
+
+            filteredData.forEach(row => {
+                csvContent += `${row.id},${row.date},"${row.customer}",${row.segment},${row.region},${row.category},${row.amount},${row.profit},${row.status}\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `retail_sales_export_${Date.now()}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function updateDashboard() {
+            updateKPIs();
+            renderMonthlyTrendChart();
+            renderRegionDonutChart();
+            renderCategoryBarChart();
+            renderSegmentPieChart();
+            renderTable();
+        }
+
+        // On window ready, mount everything
+        window.onload = function() {
+            updateDashboard();
+        };
+    </script>
+</body>
+</html>
