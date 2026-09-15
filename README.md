@@ -2,6 +2,8 @@
 
 ## 📌 Project Overview
 An interactive analytical dashboard designed to analyze retail transactional data, track revenue trends, and evaluate profitability across regions and product categories.
+🔗 **Live Interactive Dashboard:** [Click Here to View Live Demo](https://sayedinam.github.io/retail-sales-powerbi-dashboard/)
+
 
 ---
 
